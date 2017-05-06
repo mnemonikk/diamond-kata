@@ -1,6 +1,7 @@
 require "minitest/autorun"
 require_relative "canvas"
 require_relative "translation"
+require_relative "reflection"
 
 class TestDiamond < Minitest::Test
   def test_end_to_end
@@ -39,18 +40,21 @@ Diamond = Struct.new(:last) do
       0.upto(radius),
       radius.downto(0)
     ).each do |letter, x, y|
-      canvas[ x,  y] = letter
-      canvas[-x,  y] = letter
-      canvas[ x, -y] = letter
-      canvas[-x, -y] = letter
+      canvas[x, y] = letter
     end
   end
 
   def canvas
     @canvas ||=
-      Translation.new(
-        Canvas.new(width),
-        radius, radius
+      Reflection.new(
+        Reflection.new(
+          Translation.new(
+            Canvas.new(width),
+            radius, radius
+          ),
+          1, -1
+        ),
+        -1, 1
       )
   end
 
