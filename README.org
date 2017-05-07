@@ -1,6 +1,6 @@
 * Hidden abstractions in the Diamond Kata
 
-The other day my colleagues and I were doing the "Diamond Kata". A code kata is a coding exercise you're supposed to do repeatedly in order to hone your skills. You might want to try different approaches, different programming languages or coding disciplines. I found the Diamond Kata interesting in its own right, let me tell you what I found.
+The other day my colleagues and I were doing the "Diamond Kata". If you haven't heard about code katas yet: it's a coding exercise you're supposed to do repeatedly in order to hone your skills. Each time, you might want to try different approaches, different programming languages or coding disciplines. I found the Diamond Kata interesting in its own right, let me tell you why.
 
 ** The task
 
@@ -24,9 +24,11 @@ D     D
    A
 #+END_EXAMPLE
 
+Looks pretty simple, right?
+
 ** A solution
 
-Looks pretty simple, right? I'm going to present a solution in ruby. Let's write some end-to-end tests first:
+I'm going to present a solution in ruby. Let's write some end-to-end tests first:
 
 #+BEGIN_SRC ruby
 class TestDiamond < Minitest::Test
@@ -52,7 +54,7 @@ C   C
 end
 #+END_SRC
 
-That was easy. So how are we going to solve this? We need to create the ~Diamond~ class and ~Diamond#to_s~ first. The string returned will be a concatenation of all the lines.
+That was easy. So how are we going to solve this? Let's start top down. We need to create the ~Diamond~ class and ~Diamond#to_s~ first. The string returned will be a concatenation of all the lines.
 
 #+BEGIN_SRC ruby
 Diamond = Struct.new(:last) do
@@ -68,7 +70,7 @@ Diamond = Struct.new(:last) do
 end
 #+END_SRC
 
-Each line that has the same letter looks exactly alike. So we just need to figure out the right sequence of letters and have a method that can create the corresponding line. Let's work on getting the sequence of letters right.
+There's only ever to be the same letter on every line and lines with the same letter look exactly alike. So we just need to figure out the right sequence of letters and have a method for creating the corresponding line. Let's work on getting the sequence of letters right.
 
 #+BEGIN_SRC ruby
 class TestDiamond < Minitest::Test
@@ -129,18 +131,20 @@ Diamond = Struct.new(:last) do
 end
 #+END_SRC
 
-This took a few tries to get right, but seems to work. Everythin is passing now, we're done. I wasn't happy with this solution, though. Why? I was checking my code against Kent Beck's four rules of simple design. Let me repeat them here: Simple code
+This took a few tries to get right, but seems to work. The end-to-end tests are passing now, we're done. I wasn't happy with this solution, though. Why? I was checking my code against Kent Beck's four rules of simple design. Let me repeat them here: 
 
-1. passes test, i.e. works
-2. communicates intent
-3. contains no duplication
-4. uses a minimum amount of classes and methods
+    Simple code
 
-My problem was that the code doesn't reflect the nature of the problem. It took me a few days to figure out what I was looking for instead.
+    1. passes test, i.e. works
+    2. communicates intent
+    3. contains no duplication
+    4. uses a minimum amount of classes and methods
+
+My problem was with rule 2., that the code doesn't reflect the nature of the problem. You would never figure what the code does without running it or looking at the tests. It took me a few days to figure out another way.
 
 ** The hidden abstraction
 
-The task of the kata is not to output a certain random string. It's a geometrical shape. It's a symmetric shape. In math, you would draw something like this in a two dimensional coordinate system. So if we could have some kind of canvas that we can render down to a string, we could express the problem in a much nicer way. Let's try this out! Here's a really simple (square) text canvas:
+The task of the kata is not to output a certain random string. The diamond is a geometrical shape, it's symmetrical. In math, you would draw something like this in a two dimensional coordinate system. So if we had some kind of canvas that we can render down to a string we could express the problem in a much nicer way. Let's try this out! Here's a really simple (square) text canvas:
 
 #+BEGIN_SRC ruby
 class TestCanvas < Minitest::Test
@@ -175,7 +179,7 @@ Canvas = Struct.new(:size) do
 end
 #+END_SRC
 
-On this canvas we need to paint every letter four times. We don't need a special case for the tips any more: we'll just paint these more than once, at the same position. Let's call the distance between the letter ~radius~. We need to shift everything by this value in X and Y direction, as our origin in the top left corner is ~0, 0~. Here's something that works:
+On this canvas we need to paint every letter four times. We don't need a special case for the tips any more: the tips will get painted more than once, at the same position. I introduce the ~radius~ of the diamond. We need to shift everything by this value in X and Y direction as our origin ~0, 0~ is in the top left corner. Here's something that works:
 
 #+BEGIN_SRC ruby
 Diamond = Struct.new(:last) do
@@ -214,7 +218,13 @@ Diamond = Struct.new(:last) do
 end
 #+END_SRC
 
-I already like this solution much better. We got rid of our special case. The symmetry of the diamond shape is reflected by the drawing operations. The ~Canvas~ class can be tested independently and is a component that we can easily reuse. There's also a thing I didn't mention previously: we had to make ~Diamond#letters~ and ~Diamond#line_for~ public so that they could be tested. But they are really an implementation detail that no other code should depend upon. With the current implementation I'm quite happy with the feedback that the end-to-end test provides. Maybe some minor thing: the ~#draw!~ method still has some duplication, the drawing of letter looks repetitive as we always need to add the radius. According to the Four Rules of Simple Design, this is something to look out for. So let's see if we can improve.
+I already like this solution much better. 
+
+- We got rid of the special case. 
+- The symmetry of the diamond shape is reflected by the drawing operations. 
+- The ~Canvas~ class can be tested independently and is a component that we can easily reuse. 
+
+There's also a thing I didn't mention previously: we had to make ~Diamond#letters~ and ~Diamond#line_for~ public so that they could be tested. But they are really an implementation detail that no other code should depend upon. With the current implementation I'm quite happy with the feedback that the end-to-end test provides. Maybe some minor thing: the ~#draw!~ method still has some duplication, the drawing of letter looks repetitive as we always need to add the radius. According to the Four Rules of Simple Design, this is something to look out for. So let's see if we can improve.
 
 ** More abstractions
 
@@ -337,7 +347,7 @@ class Reflection  < SimpleDelegator
 end
 #+END_SRC
 
-This looks very similar to ~Translation~, the difference is that we're still drawing in the original location. In order to be even more general, you might want to have a stack of canvases composed out of different layers that get combined when rendered down to a string. I chose not to go this route here. So what does this mean for our ~Diamond~ class?
+This looks very similar to ~Translation~, using multiplication instead of addition. The difference is that we're still drawing in the original location. In order to be even more general, you could introduce a stack of canvases that get layered on top of each other during rendering. I chose not to go this route here. So what does this mean for our ~Diamond~ class?
 
 #+BEGIN_SRC ruby
 Diamond = Struct.new(:last) do
@@ -366,10 +376,14 @@ Diamond = Struct.new(:last) do
   end
 #+END_SRC
 
-The setup of our canvas looks pretty complex now. Is this still simple design? Duplication is reduced, but we have more classes working together. Whether this is all worth it depends on the context. For me this is just an exercise, so I can do what I please. What if this was happening in a business context? If the business is trying to create a terminal-based text-only drawing program for UNIX-nerds, there's a high likelyhood that our investment in composable classes will pay off quickly. If on the other hand this task was only a one-off job to help in creating a new company logo our efforts would have been wasteful and our first version would have been good enough.
+The setup of our canvas looks pretty complex now. Is this still simple design? Duplication is reduced, but we have more classes working together. Whether this is all worth it depends on the context. For me this is just an exercise, so I can do what I please. But what if this was happening in a business context? If the business is trying to create a terminal-based text-only drawing program for UNIX-nerds, there's a high likelyhood that our investment in composable classes will pay off quickly. If on the other hand this task was only a one-off job to help in creating a new company logo, our efforts would have been wasteful and our first version would have been good enough.
 
 ** A parable for hidden abstractions
 
-In hindsight the value of introducing the ~Canvas~ abstraction is obvious. Why didn't I see it earlier? I think this is due to my upbringing as a programmer. A programmer learn how to do useful stuff with a dumb machine. We're aware of the limits of our programming environments and take pride in how we're still getting useful stuff done. So it's only logical that we break the output up into individual lines and start to solve the smaller problem of creating a single line. The problem is that this is disregarding the outside context and therefore obscures the nature of the task.
+In hindsight the value of introducing the ~Canvas~ abstraction is obvious. Why didn't I see it earlier? I think this is due to my upbringing as a programmer. A programmer learns how to do useful stuff with a dumb machine. We're aware of the limits of our programming environments and take pride in how we're still getting useful stuff done. So it's only logical that start to think like the machine, we break the output up into individual lines and start to solve the smaller problem of creating a single line. The problem is that this is disregarding the outside context and therefore obscures the nature of the task.
 
-This reminds me of the history of astronomy. In antiquity, astronomers were able to calculate the motion of the planets pretty accurately even though they were using the geocentric model. The Ptolemaic system was pretty complex and was assuming that planets were moving in epicycles along deferents. Similar to our first implementation, it worked just fine. But as we know today, it makes a lot more sense to put the sun in the center of the solar system.
+This reminded me of the history of astronomy. In antiquity, astronomers were able to calculate the motion of the planets pretty accurately even though they were using the geocentric model. The Ptolemaic system was pretty complex, it assumed that planets were moving in epicycles along deferents. Similar to our first implementation, it worked just fine. But as we know today, it's more useful to put the sun in the center. Contemporary programmers struggle with finding a better point of view just as much as the astronomers of yore.
+
+** Abstractions and TDD
+
+People have been saying that TDD leads to better design and I tend to agree. But TDD doesn't write code, it doesn't create abstractions and it doesn't always make it obvious what next step to take. A nicely factored implementation is easy to test - it's our job as programmers to conceive it.
